@@ -20,7 +20,8 @@ while(1) {
 	my @links = $m->find_all_links(
 		url_abs_regex => qr!^http://wallpaper.skins.be/.+/1920x1200/$!,
 	);
-  last unless @links;
+	
+	last unless @links;
 	
 	for my $l (@links) {
 		$m->get($l);
@@ -34,5 +35,6 @@ while(1) {
 			print " done!\n";
 		}
 	}
-  $i++;
+	
+	$i++;
 }
