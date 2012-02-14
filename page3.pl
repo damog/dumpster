@@ -1,65 +1,47 @@
-#!/usr/bin/perl
-
-use strict;
-use warnings;
-
-use Data::Dumper;
 use Modern::Perl;
 use WWW::Mechanize;
+use Data::Dumper;
+use File::Basename;
+use List::Util qw(shuffle);
 
-my $p3 = 'http://www.page3.com';
-my $page3 = $p3.'/wallpapers_home.shtml';
-my $m = WWW::Mechanize->new;
-chdir '/Users/damog/Pictures/models/';
+$|++;
 
-my @girls;
+my $mech = WWW::Mechanize->new;
+my $ua = LWP::UserAgent->new('agent' => 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.4) Gecko/20030624');
+my $dir = '/Users/david/Pictures/models/page3';
+$mech->agent_alias( 'Linux Mozilla' );
 
-sub includes {
-	my $element = pop;
-	my(@list) = @_;
-	return 1 if grep { $_ eq $element } @list;
-	return;
-}
+$mech->get('http://www.page3.com/wallpaper/');
 
-for my $c ("a".."z") {
-	my $girlpage = "$p3/includes/wallpapers/$c.html";
-	$m->get($girlpage);
-	for my $link ($m->find_all_links(
-		url_abs_regex => qr!http://www.page3.com/girl/[\w\-]+/wallpaper_index.shtml!)) {
-			my($girl) = $link->url_abs->abs =~ m~http://www.page3.com/girl/(.+?)/wallpaper_index.shtml~;
-			push @girls, $girl unless includes @girls, $girl;
-	}
-}
+my $cont = $mech->content;
 
-for my $girl (@girls) {
-	
-	for my $i (1..20) {
-		my $url = "$p3/girl/$girl/wallpaper$i.html";
-		say "Getting... $url... ";
-		eval {
-			$m->get($url);
-		};
-		if($m->status == 200) {
-			my(@files) = $m->content =~ / = '(.+?1600x1200.+?)'/g;
-			for my $file ( @files ) {
-				my $picurl = "$p3/girl/$girl/wallpaper/$file";
-				print "...getting $picurl... ";
-				if(-e $file) {
-					print "already there!\n";
-			    } else {
-					`wget --quiet -nc $picurl` unless -f $file;
-					print " done!\n";
-				}
-			}
-		} else {
-			last;
-		}
-		print "\n";
-	}
-		
-	# $m->get("$p3/girl/$girl/wallpaper_index.shtml");
-	# print Dumper $m->content;
-	# die 'moo';
-	# print $girl, "\n";
+my($obj) = $cont =~ /var girlThumbObjArray = (\[.+?\])/;
+
+my(@one600s) = $obj =~ /w1600:'(http:\/\/www\.page3.+?\.ece)'/g;
+
+for my $u ( shuffle @one600s ) {
+    say "=> Trying $u...";
+    
+    my $req = HTTP::Request->new(GET => $u);
+    my $res = $ua->request($req);
+    
+    my $image = $res->content;
+
+    my $file;
+    eval {
+        $file = basename($res->previous->header('Location'));
+    } or do {
+        die Dumper $res;
+    };
+    
+    if(-f "$dir/$file") {
+        # say "$file already exists!"
+    } else {
+        open my $fh, ">", "$dir/$file" or die $!;
+        binmode $fh;
+        print $fh $image;
+        close $fh;
+        say "Saved $file!";
+    }
 }
 

@@ -8,7 +8,7 @@ use Data::Dumper;
 
 my $m = WWW::Mechanize->new;
 
-chdir '/Users/damog/Pictures/models/';
+chdir '/Users/david/Pictures/models/';
 
 my $i = 1;
 while(1) {
